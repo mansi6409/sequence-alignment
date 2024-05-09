@@ -1,10 +1,9 @@
-# Basic Dynamic Programming Sequence Alignment Algorithm
+
 import re
 import psutil
 import time
 import sys
 
-# Function to validate a correct input
 def validate_input_strings(row):
     if (row.isalpha()):
         regEx = r'[^TCAG]'
@@ -20,17 +19,10 @@ def validate_input_strings(row):
         else:
             return value
 
-# Function to generate the strings (strings[0] = X, strings[1] = Y)
 def create_input(inputFile):
-    # finalSequences, originalSequence, sequenceLength = list()
     finalSequences, originalSequence, sequenceLength = list(), list(), list()
-    # originalSequence = list()
-    # sequenceLength = list()
-
     for row in inputFile:
-        # Removing the newline character
         row = row.split()[0]
-
         validateSequence = validate_input_strings(row)
         print("validateSequence - ", validateSequence)
 
@@ -41,7 +33,6 @@ def create_input(inputFile):
             print("finalSequences - ", finalSequences)
             print("originalSequence - ", originalSequence)
             print("sequenceLength - ", sequenceLength)
-
         else:
             value = validateSequence
             print("value - ", value)
@@ -52,22 +43,17 @@ def create_input(inputFile):
             finalSequences[-1] = string[:value+1] + string + string[value+1:]
             print("finalSequences - ", finalSequences)
 
-    # Validating the generation of finalSequences
     sequenceLength = [2 ** sequenceLength[i] * len(originalSequence[i]) for i in (0, 1)]
     if (len(finalSequences[0]) != sequenceLength[0] or len(finalSequences[1]) != sequenceLength[1]):
         sys.exit('Sequence generation error')
 
-    # returning the finalSequences
     return finalSequences[0], finalSequences[1]
 
-# Function to find the similarity between two strings
 def string_similarity(X, Y, delta, alpha):
     xLen = len(X)
     yLen = len(Y)
 
     alignmentCosts = [[0] * (yLen+1) for _ in range(xLen+1)]
-
-    # Initialization
     alignmentCost = 0
     for xIndex in range(xLen+1):
         alignmentCosts[xIndex][0] = alignmentCost
@@ -78,7 +64,6 @@ def string_similarity(X, Y, delta, alpha):
         alignmentCosts[0][yIndex] = alignmentCost
         alignmentCost += delta
 
-    # Filling the alignmentCosts table
     for xIndex in range(1, xLen+1):
         for yIndex in range(1, yLen+1):
             alignmentCosts[xIndex][yIndex] = min(alignmentCosts[xIndex-1][yIndex] + delta,
@@ -87,20 +72,16 @@ def string_similarity(X, Y, delta, alpha):
 
     return alignmentCosts
 
-# Function to find the alignment between two strings
 def align_sequence(X, Y, delta, alpha):
     xAlignedSeq = str()
     yAlignedSeq = str()
-
-    # Calculating the string similarity alignmentCosts using DP
+    
     alignmentCosts = string_similarity(X, Y, delta, alpha)
 
-    # Top-Down Pass to find the string alignments
     xIndex = len(X)
     yIndex = len(Y)
 
     while not (xIndex == 0 and yIndex == 0):
-        # Add gaps for remaining length of the longer string and break the while
         if (xIndex == 0):
             xAlignedSeq = '_' * yIndex + xAlignedSeq
             yAlignedSeq = Y[:yIndex] + yAlignedSeq
@@ -130,7 +111,6 @@ def align_sequence(X, Y, delta, alpha):
 
     return alignmentCosts[len(X)][len(Y)], xAlignedSeq, yAlignedSeq
 
-# Function to measure memory usage
 def process_memory():
     process = psutil.Process()
     memory_info = process.memory_info()
@@ -152,19 +132,10 @@ def time_wrapper():
     return time_taken, alignmentCost, xAlignedSeq, yAlignedSeq
 
 if __name__ == '__main__':
-
-    # Start measuring memory
     initialMem = process_memory()
-
-    # Fetching the input and output files
-    # if (len(sys.argv) != 3):
-    #     sys.exit('Error! 2 parameters required, but {count} were given'.format(
-    #         count=(len(sys.argv)-1)))
-
     inputFile = sys.argv[1]
     outputFile = sys.argv[2]
 
-    # Reading the input file
     try:
         f1 = open(inputFile, 'r')
     except:
@@ -176,15 +147,12 @@ if __name__ == '__main__':
     except:
         sys.exit('Output file not found')
         
-
     X, Y = create_input(f1)
 
     time_taken, alignmentCost, xAlignedSeq, yAlignedSeq = time_wrapper()
 
     finalMem = process_memory()
-    usedMem = finalMem - initialMem
-
-    # Write to the file
+    usedMem = abs(finalMem - initialMem)
     original_stdout = sys.stdout
     sys.stdout = f2
     print(alignmentCost, xAlignedSeq, yAlignedSeq, time_taken, usedMem, sep="\n")
