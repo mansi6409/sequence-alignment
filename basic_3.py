@@ -1,137 +1,134 @@
 # Basic Dynamic Programming Sequence Alignment Algorithm
-import sys
 import re
-import time
-
 import psutil
-
+import time
+import sys
 
 # Function to validate a correct input
-def checkinput(string):
-    if (string.isalpha()):
-        pattern = r'[^ACGT]'
-        if (re.search(pattern, string)):
-            sys.exit('Error! Base string should contain only A, C, G, T, but {string} was recevied'.format(
-                string=string))
+def validate_input_strings(row):
+    if (row.isalpha()):
+        regEx = r'[^TCAG]'
+        if (re.search(regEx, row)):
+            sys.exit('Invalid input')
         else:
-            return 'Base'
+            return 'Parent'
     else:
         try:
-            index = int(string)
+            value = int(row)
         except:
-            sys.exit('Error! Expected a numerical index, but "{string}" was given'.format(
-                string=string))
+            sys.exit('Invalid input')
         else:
-            return index
-
+            return value
 
 # Function to generate the strings (strings[0] = X, strings[1] = Y)
-def string_generator(input_file):
-    strings = list()
-    base_strings = list()
-    lengths = list()
+def create_input(inputFile):
+    # finalSequences, originalSequence, sequenceLength = list()
+    finalSequences, originalSequence, sequenceLength = list(), list(), list()
+    # originalSequence = list()
+    # sequenceLength = list()
 
-    for line in input_file:
+    for row in inputFile:
         # Removing the newline character
-        line = line.split()[0]
+        row = row.split()[0]
 
-        check_result = checkinput(line)
+        validateSequence = validate_input_strings(row)
+        print("validateSequence - ", validateSequence)
 
-        if (check_result == 'Base'):
-            strings.append(line)
-            base_strings.append(line)
-            lengths.append(0)
+        if (validateSequence == 'Parent'):
+            originalSequence.append(row)
+            finalSequences.append(row)
+            sequenceLength.append(0)
+            print("finalSequences - ", finalSequences)
+            print("originalSequence - ", originalSequence)
+            print("sequenceLength - ", sequenceLength)
 
         else:
-            lengths[-1] += 1
-            index = check_result
-            string = strings[-1]
-            strings[-1] = string[:index+1] + string + string[index+1:]
+            value = validateSequence
+            print("value - ", value)
+            string = finalSequences[-1]
+            print("string - ", string)
+            sequenceLength[-1] += 1
+            print("sequenceLength - ", sequenceLength)
+            finalSequences[-1] = string[:value+1] + string + string[value+1:]
+            print("finalSequences - ", finalSequences)
 
-    # Validating the generation of strings
-    lengths = [2 ** lengths[i] * len(base_strings[i]) for i in (0, 1)]
-    if (len(strings[0]) != lengths[0] or len(strings[1]) != lengths[1]):
-        sys.exit('Program Error in generation of strings!')
+    # Validating the generation of finalSequences
+    sequenceLength = [2 ** sequenceLength[i] * len(originalSequence[i]) for i in (0, 1)]
+    if (len(finalSequences[0]) != sequenceLength[0] or len(finalSequences[1]) != sequenceLength[1]):
+        sys.exit('Sequence generation error')
 
-    # returning the strings
-    return strings[0], strings[1]
-
+    # returning the finalSequences
+    return finalSequences[0], finalSequences[1]
 
 # Function to find the similarity between two strings
 def string_similarity(X, Y, delta, alpha):
-    m = len(X)
-    n = len(Y)
+    xLen = len(X)
+    yLen = len(Y)
 
-    alignment_costs = [[0] * (n+1) for _ in range(m+1)]
+    alignmentCosts = [[0] * (yLen+1) for _ in range(xLen+1)]
 
     # Initialization
-    alignment_cost = 0
-    for x_position in range(m+1):
-        alignment_costs[x_position][0] = alignment_cost
-        alignment_cost += delta
+    alignmentCost = 0
+    for xIndex in range(xLen+1):
+        alignmentCosts[xIndex][0] = alignmentCost
+        alignmentCost += delta
 
-    alignment_cost = 0
-    for y_position in range(n+1):
-        alignment_costs[0][y_position] = alignment_cost
-        alignment_cost += delta
+    alignmentCost = 0
+    for yIndex in range(yLen+1):
+        alignmentCosts[0][yIndex] = alignmentCost
+        alignmentCost += delta
 
-    # Filling the alignment_costs table
-    for x_position in range(1, m+1):
-        for y_position in range(1, n+1):
-            alignment_costs[x_position][y_position] = min(alignment_costs[x_position-1][y_position] + delta,
-                                                 alignment_costs[x_position][y_position-1] + delta,
-                                                 alignment_costs[x_position-1][y_position-1] + alpha[X[x_position-1]][Y[y_position-1]])
+    # Filling the alignmentCosts table
+    for xIndex in range(1, xLen+1):
+        for yIndex in range(1, yLen+1):
+            alignmentCosts[xIndex][yIndex] = min(alignmentCosts[xIndex-1][yIndex] + delta,
+                                                 alignmentCosts[xIndex][yIndex-1] + delta,
+                                                 alignmentCosts[xIndex-1][yIndex-1] + alpha[X[xIndex-1]][Y[yIndex-1]])
 
-    return alignment_costs
-
+    return alignmentCosts
 
 # Function to find the alignment between two strings
-def string_alignment(X, Y, delta, alpha):
-    X_align = str()
-    Y_align = str()
+def align_sequence(X, Y, delta, alpha):
+    xAlignedSeq = str()
+    yAlignedSeq = str()
 
-    # Calculating the string similarity alignment_costs using DP
-    alignment_costs = string_similarity(X, Y, delta, alpha)
+    # Calculating the string similarity alignmentCosts using DP
+    alignmentCosts = string_similarity(X, Y, delta, alpha)
 
     # Top-Down Pass to find the string alignments
-    x_position = len(X)
-    y_position = len(Y)
+    xIndex = len(X)
+    yIndex = len(Y)
 
-    while not (x_position == 0 and y_position == 0):
+    while not (xIndex == 0 and yIndex == 0):
         # Add gaps for remaining length of the longer string and break the while
-        if (x_position == 0):
-            X_align = '_' * y_position + X_align
-            Y_align = Y[:y_position] + Y_align
+        if (xIndex == 0):
+            xAlignedSeq = '_' * yIndex + xAlignedSeq
+            yAlignedSeq = Y[:yIndex] + yAlignedSeq
             break
-        elif (y_position == 0):
-            X_align = X[:x_position] + X_align
-            Y_align = '_' * x_position + Y_align
+        elif (yIndex == 0):
+            xAlignedSeq = X[:xIndex] + xAlignedSeq
+            yAlignedSeq = '_' * xIndex + yAlignedSeq
             break
 
-        X_add = Y_add = '_'
+        xTemp = '_' 
+        yTemp = '_'
+        
+        if (delta + alignmentCosts[xIndex-1][yIndex] == alignmentCosts[xIndex][yIndex]):
+            xTemp = X[xIndex-1]
+            xIndex -= 1
+        elif (delta + alignmentCosts[xIndex][yIndex-1] == alignmentCosts[xIndex][yIndex]):
+            yTemp = Y[yIndex-1]
+            yIndex -= 1
+        elif ((alpha[X[xIndex-1]][Y[yIndex-1]] + alignmentCosts[xIndex-1][yIndex-1]) == alignmentCosts[xIndex][yIndex]):
+            xTemp = X[xIndex-1]
+            yTemp = Y[yIndex-1]
+            xIndex -= 1
+            yIndex -= 1
+            
+        xAlignedSeq = xTemp + xAlignedSeq
+        yAlignedSeq = yTemp + yAlignedSeq
 
-        # Pair Xm and Yn characters
-        if ((alpha[X[x_position-1]][Y[y_position-1]] + alignment_costs[x_position-1][y_position-1]) == alignment_costs[x_position][y_position]):
-            X_add = X[x_position-1]
-            Y_add = Y[y_position-1]
-            x_position -= 1
-            y_position -= 1
-
-        # Add a gap corresponding to Xm
-        elif (delta + alignment_costs[x_position-1][y_position] == alignment_costs[x_position][y_position]):
-            X_add = X[x_position-1]
-            x_position -= 1
-
-        # Add a gap corresponding to Yn
-        elif (delta + alignment_costs[x_position][y_position-1] == alignment_costs[x_position][y_position]):
-            Y_add = Y[y_position-1]
-            y_position -= 1
-
-        X_align = X_add + X_align
-        Y_align = Y_add + Y_align
-
-    return alignment_costs[len(X)][len(Y)], X_align, Y_align
-
+    return alignmentCosts[len(X)][len(Y)], xAlignedSeq, yAlignedSeq
 
 # Function to measure memory usage
 def process_memory():
@@ -140,61 +137,55 @@ def process_memory():
     memory_consumed = int(memory_info.rss/1024)
     return memory_consumed
 
-
-# main method
-if __name__ == '__main__':
-
-    # Start measuring memory
-    startMemory = process_memory()
-
-    # Fetching the input and output files
-    if (len(sys.argv) != 3):
-        sys.exit('Error! 2 parameters required, but {count} were given'.format(
-            count=(len(sys.argv)-1)))
-
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
-
-    # Reading the input file
-    try:
-        i_f = open(input_file, 'r')
-    except:
-        sys.exit(
-            'Error! {filepath} - Input file not found'.format(filepath=input_file))
-
-    try:
-        o_f = open(output_file, 'w')
-    except:
-        sys.exit(
-            'Error! {filepath} - Path not found'.format(filepath=output_file))
-
-    X, Y = string_generator(i_f)
-
-    # Defining alpha and delta values
+def time_wrapper(): 
     delta = 30
     alpha = {'A': {'A': 0, 'C': 110, 'G': 48, 'T': 94},
              'C': {'A': 110, 'C': 0, 'G': 118, 'T': 48},
              'G': {'A': 48, 'C': 118, 'G': 0, 'T': 110},
              'T': {'A': 94, 'C': 48, 'G': 110, 'T': 0}}
-
-    # Start measuring time
-    start_time = time.time()
-    
-    # Run Algorithm
-    alignment_cost, X_align, Y_align = string_alignment(X, Y, delta, alpha)
-
-    # End measuring time
+    start_time = time.time() 
+    print("X - ", X)
+    print("Y - ", Y)
+    alignmentCost, xAlignedSeq, yAlignedSeq = align_sequence(X, Y, delta, alpha)
     end_time = time.time()
+    time_taken = (end_time - start_time)*1000 
+    return time_taken, alignmentCost, xAlignedSeq, yAlignedSeq
 
-    # End measuring memory
-    endMemory = process_memory()
+if __name__ == '__main__':
 
-    # Calculate time and memory usage
-    time_taken = (end_time - start_time)*1000
-    mem_taken = endMemory - startMemory
+    # Start measuring memory
+    initialMem = process_memory()
+
+    # Fetching the input and output files
+    # if (len(sys.argv) != 3):
+    #     sys.exit('Error! 2 parameters required, but {count} were given'.format(
+    #         count=(len(sys.argv)-1)))
+
+    inputFile = sys.argv[1]
+    outputFile = sys.argv[2]
+
+    # Reading the input file
+    try:
+        f1 = open(inputFile, 'r')
+    except:
+        sys.exit('Input file not found')
+
+    try:
+        f2 = open(outputFile, 'w')
+        f2.truncate(0)
+    except:
+        sys.exit('Output file not found')
+        
+
+    X, Y = create_input(f1)
+
+    time_taken, alignmentCost, xAlignedSeq, yAlignedSeq = time_wrapper()
+
+    finalMem = process_memory()
+    usedMem = finalMem - initialMem
 
     # Write to the file
     original_stdout = sys.stdout
-    sys.stdout = o_f
-    print(alignment_cost, X_align, Y_align, time_taken, mem_taken, sep="\n")
+    sys.stdout = f2
+    print(alignmentCost, xAlignedSeq, yAlignedSeq, time_taken, usedMem, sep="\n")
     sys.stdout = original_stdout
