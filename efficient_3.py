@@ -4,38 +4,28 @@ import psutil
 import time
 import sys
 
-def validate_input_strings(row):
-    if (row.isalpha()):
-        regEx = r'[^TCAG]'
-        if (re.search(regEx, row)):
-            sys.exit('Invalid input')
-        else:
-            return 'Parent'
-    else:
-        try:
-            value = int(row)
-        except:
-            sys.exit('Invalid input')
-        else:
-            return value
-
 def create_input(inputFile):
     finalSequences, originalSequence, sequenceLength = list(), list(), list()
 
     for row in inputFile:
         row = row.split()[0]
-        validateSequence = validate_input_strings(row)
+        if (row.isalpha()):
+            regEx = r'[^TCAG]'
+            if (re.search(regEx, row)):
+                sys.exit('Invalid input')
+            else:
+                validateSequence = 'Parent'
+        else:
+            try:
+                value = int(row)
+            except:
+                sys.exit('Invalid input')
+            else:
+                validateSequence =  value
+        # validateSequence = validate_input_strings(row)
         print("validateSequence - ", validateSequence)
 
-        if (validateSequence == 'Parent'):
-            originalSequence.append(row)
-            finalSequences.append(row)
-            sequenceLength.append(0)
-            print("finalSequences - ", finalSequences)
-            print("originalSequence - ", originalSequence)
-            print("sequenceLength - ", sequenceLength)
-
-        else:
+        if(validateSequence != 'Parent'):
             value = validateSequence
             print("value - ", value)
             string = finalSequences[-1]
@@ -44,6 +34,14 @@ def create_input(inputFile):
             print("sequenceLength - ", sequenceLength)
             finalSequences[-1] = string[:value+1] + string + string[value+1:]
             print("finalSequences - ", finalSequences)
+            
+        else:
+            originalSequence.append(row)
+            finalSequences.append(row)
+            sequenceLength.append(0)
+            print("finalSequences - ", finalSequences)
+            print("originalSequence - ", originalSequence)
+            print("sequenceLength - ", sequenceLength)
 
     sequenceLength = [2 ** sequenceLength[i] * len(originalSequence[i]) for i in (0, 1)]
     if (len(finalSequences[0]) != sequenceLength[0] or len(finalSequences[1]) != sequenceLength[1]):

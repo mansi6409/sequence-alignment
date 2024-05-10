@@ -1,6 +1,7 @@
 for i in {1..15}
 do
 echo "Cleaning all output files"
+mkdir output_efficient
 rm output_efficient/out${i}.txt
 echo "Creating output file ${i}"
 touch output_efficient/out${i}.txt
