@@ -36,72 +36,74 @@ def create_input(inputFile):
 
     return finalSequences[0], finalSequences[1]
 
-def string_similarity(X, Y, delta, alpha):
-    alignmentCosts = [[0 for _ in range(len(Y)+1)] for _ in range(len(X)+1)]
+def string_similarity(first_seq, second_seq, cost_gap, cost_mismatch):
+    alignmentCosts = [[0 for _ in range(len(Y)+1)] for _ in range(len(first_seq)+1)]
 
-    xLen, yLen = len(X), len(Y)
+    xLen, yLen = len(first_seq), len(second_seq)
     for xIndex in range(xLen+1):
-        alignmentCosts[xIndex][0] = xIndex * delta
+        alignmentCosts[xIndex][0] = xIndex * cost_gap
     for yIndex in range(yLen+1):
-        alignmentCosts[0][yIndex] = yIndex * delta
+        alignmentCosts[0][yIndex] = yIndex * cost_gap
 
     for xIndex in range(1, xLen+1):
         for yIndex in range(1, yLen+1):
-            alignmentCosts[xIndex][yIndex] = min(alignmentCosts[xIndex-1][yIndex] + delta,
-                                                 alignmentCosts[xIndex][yIndex-1] + delta,
-                                                 alignmentCosts[xIndex-1][yIndex-1] + alpha[X[xIndex-1]][Y[yIndex-1]])
+            tempMin = min(alignmentCosts[xIndex-1][yIndex] + cost_gap,
+                                                 alignmentCosts[xIndex][yIndex-1] + cost_gap)
+            alignmentCosts[xIndex][yIndex] = min(tempMin,
+                                                 alignmentCosts[xIndex-1][yIndex-1] + cost_mismatch[first_seq[xIndex-1]][second_seq[yIndex-1]])
 
     return alignmentCosts
 
-def align_sequence(X, Y, delta, alpha):
-    alignmentCosts = string_similarity(X, Y, delta, alpha)
-    xIndex, yIndex = len(X), len(Y)
+def align_sequence(first_seq, second_seq, cost_gap, cost_mismatch):
+    alignmentCosts = string_similarity(first_seq, second_seq, cost_gap, cost_mismatch)
+    xIndex, yIndex = len(first_seq), len(second_seq)
     xAlignedSeq, yAlignedSeq = str(), str()
     
     while not (xIndex == 0 and yIndex == 0):
         if (xIndex == 0):
             xAlignedSeq = '_' * yIndex + xAlignedSeq
-            yAlignedSeq = Y[:yIndex] + yAlignedSeq
+            yAlignedSeq = second_seq[:yIndex] + yAlignedSeq
             break
         elif (yIndex == 0):
-            xAlignedSeq = X[:xIndex] + xAlignedSeq
+            xAlignedSeq = first_seq[:xIndex] + xAlignedSeq
             yAlignedSeq = '_' * xIndex + yAlignedSeq
             break
         
         xTemp = '_' 
         yTemp = '_'
         
-        if (delta + alignmentCosts[xIndex-1][yIndex] == alignmentCosts[xIndex][yIndex]):
-            xTemp = X[xIndex-1]
+        if (cost_gap + alignmentCosts[xIndex-1][yIndex] == alignmentCosts[xIndex][yIndex]):
+            xTemp = first_seq[xIndex-1]
             xIndex -= 1
-        elif (delta + alignmentCosts[xIndex][yIndex-1] == alignmentCosts[xIndex][yIndex]):
-            yTemp = Y[yIndex-1]
+        elif (cost_gap + alignmentCosts[xIndex][yIndex-1] == alignmentCosts[xIndex][yIndex]):
+            yTemp = second_seq[yIndex-1]
             yIndex -= 1
-        elif ((alpha[X[xIndex-1]][Y[yIndex-1]] + alignmentCosts[xIndex-1][yIndex-1]) == alignmentCosts[xIndex][yIndex]):
-            xTemp = X[xIndex-1]
-            yTemp = Y[yIndex-1]
+        elif ((cost_mismatch[first_seq[xIndex-1]][second_seq[yIndex-1]] + alignmentCosts[xIndex-1][yIndex-1]) == alignmentCosts[xIndex][yIndex]):
+            xTemp = first_seq[xIndex-1]
+            yTemp = second_seq[yIndex-1]
             xIndex -= 1
             yIndex -= 1
             
         xAlignedSeq = xTemp + xAlignedSeq
         yAlignedSeq = yTemp + yAlignedSeq
 
-    return alignmentCosts[len(X)][len(Y)], xAlignedSeq, yAlignedSeq
+    return alignmentCosts[len(first_seq)][len(second_seq)], xAlignedSeq, yAlignedSeq
 
 
-def string_similarity_efficient(seq1, seq2, gap_penalty, scoring_matrix):
-    xLen, yLen = len(seq1), len(seq2)
+def string_similarity_efficient(first_seq, second_seq, cost_gap, cost_mismatch):
+    xLen, yLen = len(first_seq), len(second_seq)
     previous_row = [0] * (yLen + 1)
 
     for i in range(1, yLen + 1):
-        previous_row[i] = previous_row[i - 1] + gap_penalty
+        previous_row[i] = previous_row[i - 1] + cost_gap
 
     for i in range(1, xLen + 1):
-        current_row = [previous_row[0] + gap_penalty] + [0] * yLen
+        current_row = [previous_row[0] + cost_gap] + [0] * yLen
         for j in range(1, yLen + 1):
-            substitution_cost = scoring_matrix[seq1[i - 1]][seq2[j - 1]]
-            current_row[j] = min(current_row[j - 1] + gap_penalty,
-                                 previous_row[j] + gap_penalty,
+            substitution_cost = cost_mismatch[first_seq[i - 1]][second_seq[j - 1]]
+            tempMin = min(current_row[j - 1] + cost_gap,
+                                 previous_row[j] + cost_gap)
+            current_row[j] = min(tempMin,
                                  previous_row[j - 1] + substitution_cost)
 
         previous_row = current_row
@@ -110,25 +112,25 @@ def string_similarity_efficient(seq1, seq2, gap_penalty, scoring_matrix):
 
 
 
-def align_sequence_efficient(X, Y, delta, alpha):
-    xLen = len(X)
-    yLen = len(Y)
+def align_sequence_efficient(first_seq, second_seq, cost_gap, cost_mismatch):
+    xLen = len(first_seq)
+    yLen = len(second_seq)
     
     if (xLen == 1 and yLen == 1):
-        return (alpha[X[0]][Y[0]], X, Y)
+        return (cost_mismatch[first_seq[0]][second_seq[0]], first_seq, second_seq)
     elif (xLen == 1):
-        return align_sequence(X, Y, delta, alpha)
+        return align_sequence(first_seq, second_seq, cost_gap, cost_mismatch)
     elif (xLen == 0 and yLen == 0):
-        return (0, X, Y)
+        return (0, first_seq, second_seq)
     elif (xLen == 0):
-        return (yLen * delta, '_' * yLen, Y)
+        return (yLen * cost_gap, '_' * yLen, second_seq)
     elif (yLen == 0):
-        return (xLen * delta, X, '_' * xLen)
+        return (xLen * cost_gap, first_seq, '_' * xLen)
 
-    xLeft, xRight = X[:xLen//2], X[xLen//2:]
+    xLeft, xRight = first_seq[:xLen//2], first_seq[xLen//2:]
     
-    leftCost = string_similarity_efficient(xLeft, Y, delta, alpha)
-    rightCost = string_similarity_efficient(xRight[::-1], Y[::-1], delta, alpha)
+    leftCost = string_similarity_efficient(xLeft, second_seq, cost_gap, cost_mismatch)
+    rightCost = string_similarity_efficient(xRight[::-1], second_seq[::-1], cost_gap, cost_mismatch)
 
     splitIndex = 0
     minAddUpCost = leftCost[0] + rightCost[yLen]
@@ -140,17 +142,11 @@ def align_sequence_efficient(X, Y, delta, alpha):
             splitIndex = k
 
     _, xLeftAlign, yLeftAlign = align_sequence_efficient(
-        xLeft, Y[:splitIndex], delta, alpha)
+        xLeft, second_seq[:splitIndex], cost_gap, cost_mismatch)
     _, xRightAlign, yRightAlign = align_sequence_efficient(
-        xRight, Y[splitIndex:], delta, alpha)
+        xRight, second_seq[splitIndex:], cost_gap, cost_mismatch)
 
     return (minAddUpCost, xLeftAlign + xRightAlign, yLeftAlign + yRightAlign)
-
-def process_memory():
-    process = psutil.Process()
-    memory_info = process.memory_info()
-    memory_consumed = int(memory_info.rss/1024)
-    return memory_consumed
 
 def time_wrapper(): 
     delta = 30
@@ -164,21 +160,30 @@ def time_wrapper():
     time_taken = (end_time - start_time)*1000 
     return time_taken, alignmentCost, X_align, Y_align
 
+def process_memory():
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    memory_consumed = int(memory_info.rss/1024)
+    return memory_consumed
+
 if __name__ == '__main__':
     initialMem = process_memory()
     inputFile = sys.argv[1]
     outputFile = sys.argv[2]
-
+    if len(sys.argv) < 3:
+            sys.exit('Usage: python efficient_3.py input_file output_file')
+    
     try:
         f1 = open(inputFile, 'r')
-    except:
-        sys.exit('Input file not found')
+    except FileNotFoundError:
+        sys.exit('Input file not found:', inputFile)
 
     try:
         f2 = open(outputFile, 'w')
         f2.truncate(0)
-    except:
-        sys.exit('Output file not found')
+    except FileNotFoundError:
+        sys.exit('Output file not found', outputFile)
+    
     X, Y = create_input(f1)
     time_taken, alignmentCost, X_align, Y_align = time_wrapper()
     endMemory = process_memory()
