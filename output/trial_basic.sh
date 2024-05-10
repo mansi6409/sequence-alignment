@@ -4,7 +4,7 @@
 for i in {1..15}
 do
   # Construct the filename
-  filename="../output/out${i}.txt"
+  filename="../arch/out${i}.txt"
   
   # Check if the file exists
   if [ -f "$filename" ]; then
