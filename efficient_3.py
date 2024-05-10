@@ -10,18 +10,9 @@ def create_input(inputFile):
     for row in inputFile:
         row = row.split()[0]
         if (row.isalpha()):
-            regEx = r'[^TCAG]'
-            if (re.search(regEx, row)):
-                sys.exit('Invalid input')
-            else:
-                validateSequence = 'Parent'
+            validateSequence = 'Parent'
         else:
-            try:
-                value = int(row)
-            except:
-                sys.exit('Invalid input')
-            else:
-                validateSequence =  value
+            validateSequence =  int(row)
         # validateSequence = validate_input_strings(row)
         print("validateSequence - ", validateSequence)
 
@@ -43,27 +34,16 @@ def create_input(inputFile):
             print("originalSequence - ", originalSequence)
             print("sequenceLength - ", sequenceLength)
 
-    sequenceLength = [2 ** sequenceLength[i] * len(originalSequence[i]) for i in (0, 1)]
-    if (len(finalSequences[0]) != sequenceLength[0] or len(finalSequences[1]) != sequenceLength[1]):
-        sys.exit('Sequence generation error')
-
     return finalSequences[0], finalSequences[1]
 
 def string_similarity(X, Y, delta, alpha):
-    xLen = len(X)
-    yLen = len(Y)
+    alignmentCosts = [[0 for _ in range(len(Y)+1)] for _ in range(len(X)+1)]
 
-    alignmentCosts = [[0] * (yLen+1) for _ in range(xLen+1)]
-
-    alignmentCost = 0
+    xLen, yLen = len(X), len(Y)
     for xIndex in range(xLen+1):
-        alignmentCosts[xIndex][0] = alignmentCost
-        alignmentCost += delta
-
-    alignmentCost = 0
+        alignmentCosts[xIndex][0] = xIndex * delta
     for yIndex in range(yLen+1):
-        alignmentCosts[0][yIndex] = alignmentCost
-        alignmentCost += delta
+        alignmentCosts[0][yIndex] = yIndex * delta
 
     for xIndex in range(1, xLen+1):
         for yIndex in range(1, yLen+1):
@@ -74,14 +54,10 @@ def string_similarity(X, Y, delta, alpha):
     return alignmentCosts
 
 def align_sequence(X, Y, delta, alpha):
-    xAlignedSeq = str()
-    yAlignedSeq = str()
-    
     alignmentCosts = string_similarity(X, Y, delta, alpha)
+    xIndex, yIndex = len(X), len(Y)
+    xAlignedSeq, yAlignedSeq = str(), str()
     
-    xIndex = len(X)
-    yIndex = len(Y)
-
     while not (xIndex == 0 and yIndex == 0):
         if (xIndex == 0):
             xAlignedSeq = '_' * yIndex + xAlignedSeq
@@ -113,45 +89,41 @@ def align_sequence(X, Y, delta, alpha):
     return alignmentCosts[len(X)][len(Y)], xAlignedSeq, yAlignedSeq
 
 
-def string_similarity_efficient(X, Y, delta, alpha):
-    xLen = len(X)
-    yLen = len(Y)
-    
-    prevCost = [0] * (yLen+1)
+def string_similarity_efficient(seq1, seq2, gap_penalty, scoring_matrix):
+    xLen, yLen = len(seq1), len(seq2)
+    previous_row = [0] * (yLen + 1)
 
-    alignmentCost = 0
-    for yIndex in range(yLen+1):
-        prevCost[yIndex] = alignmentCost
-        alignmentCost += delta
+    for i in range(1, yLen + 1):
+        previous_row[i] = previous_row[i - 1] + gap_penalty
 
-    currCost = None
-    for xIndex in range(1, xLen+1):
-        currCost = [0] * (yLen+1)
-        currCost[0] = prevCost[0] + delta
-        for yIndex in range(1, yLen+1):
-            currCost[yIndex] = min(currCost[yIndex-1] + delta,
-                                         prevCost[yIndex] + delta,
-                                         prevCost[yIndex-1] + alpha[X[xIndex-1]][Y[yIndex-1]])
+    for i in range(1, xLen + 1):
+        current_row = [previous_row[0] + gap_penalty] + [0] * yLen
+        for j in range(1, yLen + 1):
+            substitution_cost = scoring_matrix[seq1[i - 1]][seq2[j - 1]]
+            current_row[j] = min(current_row[j - 1] + gap_penalty,
+                                 previous_row[j] + gap_penalty,
+                                 previous_row[j - 1] + substitution_cost)
 
-        prevCost = currCost
-        
-    return currCost
+        previous_row = current_row
+
+    return current_row
+
 
 
 def align_sequence_efficient(X, Y, delta, alpha):
     xLen = len(X)
     yLen = len(Y)
     
-    if (xLen == 0 and yLen == 0):
+    if (xLen == 1 and yLen == 1):
+        return (alpha[X[0]][Y[0]], X, Y)
+    elif (xLen == 1):
+        return align_sequence(X, Y, delta, alpha)
+    elif (xLen == 0 and yLen == 0):
         return (0, X, Y)
     elif (xLen == 0):
         return (yLen * delta, '_' * yLen, Y)
     elif (yLen == 0):
         return (xLen * delta, X, '_' * xLen)
-    elif (xLen == 1 and yLen == 1):
-        return (alpha[X[0]][Y[0]], X, Y)
-    elif (xLen == 1):
-        return align_sequence(X, Y, delta, alpha)
 
     xLeft, xRight = X[:xLen//2], X[xLen//2:]
     
